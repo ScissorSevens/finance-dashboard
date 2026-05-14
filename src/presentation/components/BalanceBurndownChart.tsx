@@ -99,9 +99,9 @@ export default function BalanceBurndownChart({ dates, balances }: BalanceBurndow
 
   if (dates.length === 0) {
     return (
-      <div class="bg-white rounded-lg shadow p-6">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Evolución del Balance</h3>
-        <div class="h-64 flex items-center justify-center text-gray-400">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Evolución del Balance</h3>
+        <div class="h-64 flex items-center justify-center text-gray-400 dark:text-gray-500">
           Agregá transacciones para ver la evolución
         </div>
       </div>
@@ -109,8 +109,8 @@ export default function BalanceBurndownChart({ dates, balances }: BalanceBurndow
   }
 
   return (
-    <div class="bg-white rounded-lg shadow p-6">
-      <h3 class="text-lg font-semibold text-gray-800 mb-4">Evolución del Balance</h3>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+      <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Evolución del Balance</h3>
       <div class="h-64">
         <canvas ref={canvasRef}></canvas>
       </div>

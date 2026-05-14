@@ -106,6 +106,30 @@ export default function Dashboard() {
     return Object.entries(months).map(([month, amount]) => ({ month, amount }));
   };
 
+  // Calculate monthly income data for chart
+  const getMonthlyIncomeData = () => {
+    const months: Record<string, number> = {};
+    const now = new Date();
+    
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = date.toLocaleDateString('es-AR', { month: 'short' });
+      months[key] = 0;
+    }
+
+    transactions
+      .filter(t => t.type === 'income')
+      .forEach(t => {
+        const date = new Date(t.date);
+        const key = date.toLocaleDateString('es-AR', { month: 'short' });
+        if (key in months) {
+          months[key] += t.amount;
+        }
+      });
+
+    return Object.entries(months).map(([month, amount]) => ({ month, amount }));
+  };
+
   // Calculate category breakdown
   const getCategoryData = () => {
     const categories: Record<string, number> = {};
@@ -173,7 +197,7 @@ export default function Dashboard() {
 
       {/* Charts */}
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ExpenseChart data={getMonthlyData()} />
+        <ExpenseChart data={getMonthlyData()} incomeData={getMonthlyIncomeData()} />
         <CategoryChart data={getCategoryData()} />
       </div>
 

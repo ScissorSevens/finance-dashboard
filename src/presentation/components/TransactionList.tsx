@@ -35,7 +35,7 @@ export default function TransactionList({ transactions, onEdit, onDelete }: Tran
   };
 
   return (
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
       <div class="flex flex-wrap gap-4 mb-6">
         <select
           value={filterType.value}
