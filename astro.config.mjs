@@ -3,7 +3,7 @@ import tailwind from '@astrojs/tailwind';
 import preact from '@astrojs/preact';
 
 export default defineConfig({
-	site: 'https://dekuw.github.io',
+	site: 'https://ScissorSevens.github.io',
 	integrations: [
 		tailwind(),
 		preact({ compat: true }),
