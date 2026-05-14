@@ -1,0 +1,46 @@
+schema: spec-driven
+project: finance-dashboard
+
+context: |
+  Tech stack: Astro 5.x + TypeScript + Tailwind CSS 3.4
+  Architecture: Clean Architecture (domain, application, infrastructure, presentation)
+  Testing: No test runner detected yet (package.json without vitest/jest)
+  Style: Tailwind CSS for styling
+
+strict_tdd: false
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Identify affected modules/packages
+  specs:
+    - Use Given/When/Then format for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group tasks by phase (infrastructure, implementation, testing)
+    - Use hierarchical numbering (1.1, 1.2, etc.)
+    - Keep tasks small enough to complete in one session
+  apply:
+    - Follow existing code patterns and conventions
+    - Use Clean Architecture: domain (entities, value objects), application (use cases), infrastructure (repositories, services), presentation (components, pages)
+  verify:
+    - Run tests if test infrastructure exists
+    - Compare implementation against every spec scenario
+  archive:
+    - Warn before merging destructive deltas (large removals)
+
+testing:
+  runner: Not detected
+  strict_tdd: false
+  layers:
+    unit: false
+    integration: false
+    e2e: false
+  coverage: false
+  quality:
+    linter: Not configured
+    type_checker: Not configured
+    formatter: Not configured
