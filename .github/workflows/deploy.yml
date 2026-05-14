@@ -1,7 +1,11 @@
-name: Deploy to GitHub Pages
+name: CI/CD - Build & Deploy
 
 on:
   push:
+    branches:
+      - main
+      - develop
+  pull_request:
     branches:
       - main
 
@@ -13,11 +17,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: "pages-${{ github.ref }}"
+  cancel-in-progress: true
 
 jobs:
-  build:
+  # Continuous Integration
+  ci:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -32,21 +37,37 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Type Check (Astro)
+        run: npm run check
+
       - name: Build
         run: npm run build
 
-      - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
         with:
+          name: build-output
           path: ./dist
+          retention-days: 1
 
+  # Deploy to GitHub Pages (only on main branch)
   deploy:
-    needs: build
+    needs: ci
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: ./dist
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Show deployed URL
+        run: echo "🚀 Deployed to: ${{ steps.deployment.outputs.page_url }}"

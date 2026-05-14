@@ -9,7 +9,7 @@ export interface Transaction {
 	description: string;
 	date: string; // ISO 8601 format: YYYY-MM-DD
 	createdAt: string; // ISO 8601 timestamp
-	updatedAt: string; // ISO 8601 timestamp
+	updatedAt?: string; // ISO 8601 timestamp (optional for creation)
 }
 
 export type TransactionType = 'income' | 'expense';
