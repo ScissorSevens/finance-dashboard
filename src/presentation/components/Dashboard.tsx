@@ -4,6 +4,10 @@ import TransactionList from './TransactionList';
 import TransactionForm from './TransactionForm';
 import ExpenseChart from './ExpenseChart';
 import CategoryChart from './CategoryChart';
+import BalanceBurndownChart from './BalanceBurndownChart';
+import ProjectionCard from './ProjectionCard';
+import MonthlyComparison from './MonthlyComparison';
+import { useFinancialMetrics } from '../../application/hooks/useFinancialMetrics';
 import type { Transaction } from '../../domain/entities/Transaction';
 
 // Mock hook para demo - en producción usar el real
@@ -67,6 +71,9 @@ export default function Dashboard() {
   const { transactions, isLoading, totals, addTransaction, updateTransaction, deleteTransaction } = useTransactions();
   const [showForm, setShowForm] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+
+  // New complex features
+  const metrics = useFinancialMetrics(transactions, totals.balance);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-AR', {
@@ -168,6 +175,30 @@ export default function Dashboard() {
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ExpenseChart data={getMonthlyData()} />
         <CategoryChart data={getCategoryData()} />
+      </div>
+
+      {/* Balance Burndown Chart */}
+      <BalanceBurndownChart 
+        dates={metrics.runningBalance.dates} 
+        balances={metrics.runningBalance.balances} 
+      />
+
+      {/* Projection & Monthly Comparison */}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <ProjectionCard 
+          days={metrics.projection.days}
+          date={metrics.projection.date}
+          message={metrics.projection.message}
+          dailyAverage={metrics.dailyAverage}
+          currentBalance={totals.balance}
+        />
+        <MonthlyComparison 
+          currentMonth={metrics.monthlyComparison.currentMonth}
+          previousMonth={metrics.monthlyComparison.previousMonth}
+          difference={metrics.monthlyComparison.difference}
+          percentage={metrics.monthlyComparison.percentage}
+          trend={metrics.monthlyComparison.trend}
+        />
       </div>
 
       {/* Transactions */}
