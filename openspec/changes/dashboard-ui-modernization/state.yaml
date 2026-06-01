@@ -1,0 +1,25 @@
+change: dashboard-ui-modernization
+status: archived
+archived_at: 2026-06-01
+result: success
+mode: hybrid
+commits:
+  - 0835997 feat(ui): modernize dashboard with KPI sparklines + modern card surface
+  - 24200d6 fix(ui): apply .card-modern to BalanceBurndownChart data branch, space-y-10
+artifacts:
+  explore: openspec/changes/dashboard-ui-modernization/explore.md
+  proposal: openspec/changes/dashboard-ui-modernization/proposal.md
+  spec: openspec/changes/dashboard-ui-modernization/spec.md
+  design: openspec/changes/dashboard-ui-modernization/design.md
+  tasks: openspec/changes/dashboard-ui-modernization/tasks.md
+  verify: openspec/changes/dashboard-ui-modernization/verify-report.md
+  archive: openspec/changes/dashboard-ui-modernization/archive.md
+verification:
+  requirements_pass: 9
+  requirements_total: 9
+  tasks_done: 12
+  tasks_total: 12
+  build: success
+  critical_findings: 0
+  warnings: 1
+  suggestions: 1
