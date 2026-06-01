@@ -20,6 +20,11 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 let cachedClient: SupabaseClient | null = null;
 let cachedConfig: { url: string; anonKey: string } | null = null;
 
+// Build version: forces a new bundle hash so CDN caches don't serve stale assets.
+// Bump this when env-driven configuration changes.
+const BUILD_VERSION = '2026-06-01-force-cdn-refresh';
+void BUILD_VERSION;
+
 /**
  * Read Supabase env vars. Returns `null` when either is missing or empty.
  * Astro/Vite exposes only `VITE_*` (and `PUBLIC_*`) env vars to the browser
