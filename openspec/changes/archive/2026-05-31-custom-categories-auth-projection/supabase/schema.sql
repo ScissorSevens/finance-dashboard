@@ -17,12 +17,20 @@
 -- pgcrypto for gen_random_uuid()
 create extension if not exists "pgcrypto";
 
+-- ============================================================================
+-- IMPORTANT: Clerk's user.id is a string like "user_3EWGG9rtW9fiLwfl0KI9XkSOldk"
+-- — NOT a UUID. Therefore `user_id` columns must be `text`, not `uuid`.
+-- RLS uses `auth.jwt()->>'sub'` (the `sub` claim from Clerk's JWT template)
+-- rather than `auth.uid()` (which returns a Supabase UUID, not the Clerk ID).
+-- See: https://clerk.com/docs/guides/development/integrations/databases/supabase
+-- ============================================================================
+
 -- ---------------------------------------------------------------------------
 -- transactions
 -- ---------------------------------------------------------------------------
 create table if not exists public.transactions (
 	id          uuid primary key default gen_random_uuid(),
-	user_id     uuid not null,                      -- Clerk user.id
+	user_id     text not null,                      -- Clerk user.id (e.g. "user_3EWGG9rtW9fiLwfl0KI9XkSOldk")
 	amount      numeric not null check (amount > 0),
 	type        text not null check (type in ('income', 'expense')),
 	category    text not null,
@@ -42,7 +50,7 @@ create index if not exists transactions_user_date_idx
 -- ---------------------------------------------------------------------------
 create table if not exists public.categories (
 	id         uuid primary key default gen_random_uuid(),
-	user_id    uuid not null,                       -- Clerk user.id
+	user_id    text not null,                       -- Clerk user.id (e.g. "user_3EWGG9rtW9fiLwfl0KI9XkSOldk")
 	name       text not null,
 	type       text not null check (type in ('income', 'expense')),
 	color      text not null,
@@ -69,14 +77,16 @@ drop policy if exists "Users manage their own categories"  on public.categories;
 create policy "Users manage their own transactions"
 	on public.transactions
 	for all
-	using      (user_id = auth.uid())
-	with check (user_id = auth.uid());
+	to authenticated
+	using      ((select auth.jwt()->>'sub') = user_id)
+	with check ((select auth.jwt()->>'sub') = user_id);
 
 create policy "Users manage their own categories"
 	on public.categories
 	for all
-	using      (user_id = auth.uid())
-	with check (user_id = auth.uid());
+	to authenticated
+	using      ((select auth.jwt()->>'sub') = user_id)
+	with check ((select auth.jwt()->>'sub') = user_id);
 
 -- ---------------------------------------------------------------------------
 -- updated_at trigger
