@@ -61,7 +61,7 @@ export default function Dashboard() {
  */
 function DashboardContent() {
 	const { transactions, isLoading, isAuthResolved, totals, addTransaction, updateTransaction, deleteTransaction, loadTransactions } = useTransactions();
-	const { allCategories } = useCategories();
+	const { allCategories, loadCategories } = useCategories();
 	const { isSignedIn, isSupabaseConfigured } = useAuth();
 	const [showForm, setShowForm] = useState(false);
 	const [showCategoryManager, setShowCategoryManager] = useState(false);
@@ -209,8 +209,14 @@ function DashboardContent() {
 
 	const handleMigrationComplete = () => {
 		setMigrationNotice('Migración completada. Sincronizando datos…');
-		// After migration, the data lives in Supabase. Reload to pull it.
-		void loadTransactions();
+		// After migration, both transactions AND categories live in Supabase.
+		// We MUST reload both, otherwise the in-memory `categories` signal
+		// stays in its pre-migration state (stale local data still in
+		// memory even though localStorage was just cleared by the
+		// migration), and the user sees the categories "disappear" the
+		// next time the dashboard re-reads from the (now-empty) local
+		// source. See MigrationService.clearLocalData().
+		void Promise.all([loadTransactions(), loadCategories()]);
 	};
 
 	const handleMigrationDeclined = () => {

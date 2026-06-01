@@ -87,9 +87,19 @@ export default function AuthControls() {
 						onClick={async () => {
 							setMenuOpen(false);
 							const clerk = (window as unknown as {
-								Clerk?: { signOut?: () => Promise<void> };
+								Clerk?: { signOut?: (opts?: { redirectUrl?: string }) => Promise<void> };
 							}).Clerk;
-							if (clerk?.signOut) await clerk.signOut();
+							if (clerk?.signOut) {
+								// Without an explicit `redirectUrl`, Clerk redirects
+								// to the configured "After sign-out URL" in the
+								// Clerk dashboard. On GitHub Pages the dashboard
+								// is served from `/finance-dashboard/`, so the
+								// default redirect to `/` produces a 404. Pin
+								// the redirect to the current pathname so we
+								// always land back on the dashboard regardless
+								// of the Clerk dashboard config.
+								await clerk.signOut({ redirectUrl: window.location.pathname });
+							}
 						}}
 						class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
 					>

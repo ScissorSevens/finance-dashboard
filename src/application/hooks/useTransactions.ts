@@ -218,6 +218,10 @@ export function useTransactions() {
 	// picks up the new token.
 	useEffect(() => {
 		if (!isLoaded) return;
+		// Wipe the in-memory list whenever the identity changes. Same
+		// reason as in useCategories: avoid a flash of the previous
+		// user's transactions while the next load is in flight.
+		transactions.value = [];
 		void loadTransactions();
 		// We intentionally do NOT include `loadTransactions` in deps — it's
 		// a stable closure that reads the latest auth via `useAuth()`.

@@ -149,6 +149,10 @@ export function useCategories() {
 	// clerkJwt so account switching triggers a reload.
 	useEffect(() => {
 		if (!isLoaded) return;
+		// Wipe the in-memory list whenever the identity changes. Otherwise
+		// a freshly signed-in user could see a flash of the previous
+		// user's categories while the next loadCategories() is in flight.
+		categories.value = [];
 		void loadCategories();
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [isLoaded, userId, clerkJwt, isSignedIn]);
