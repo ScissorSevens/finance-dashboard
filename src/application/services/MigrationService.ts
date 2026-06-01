@@ -97,12 +97,18 @@ export class MigrationService {
 	 * used to READ from localStorage are the LocalStorage* ones, which
 	 * is the only place the data lives pre-migration.
 	 *
+	 * `clerkJwt` is the Clerk-issued Supabase JWT (template: "supabase")
+	 * used to authenticate the Supabase client so RLS policies
+	 * (`auth.jwt()->>'sub' = user_id`) match. Without it, the Supabase
+	 * client is anonymous and RLS silently rejects every insert.
+	 *
 	 * On any failure, the localStorage data is left untouched — the
 	 * spec scenario "Migration partial failure" requires the original
 	 * data to be preserved so the user can retry.
 	 */
 	async migrateAll(
 		userId: string,
+		clerkJwt: string | null,
 		onProgress?: ProgressCallback
 	): Promise<{ transactions: Transaction[]; categories: Category[] }> {
 		// Read from localStorage (the source of truth during migration).
@@ -128,11 +134,11 @@ export class MigrationService {
 		// fail fast — the dialog would not have been shown without Supabase.
 		const remoteTx: TransactionRepository = this.storage.getTransactionRepository({
 			userId,
-			clerkJwt: null,
+			clerkJwt,
 		});
 		const remoteCat: CategoryRepository = this.storage.getCategoryRepository({
 			userId,
-			clerkJwt: null,
+			clerkJwt,
 		});
 		if (
 			remoteTx instanceof LocalStorageTransactionRepository ||

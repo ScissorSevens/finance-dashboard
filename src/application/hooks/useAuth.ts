@@ -80,15 +80,18 @@ function isSupabaseConfigured(): boolean {
 function useClerkAuthInner(): UseAuthResult {
 	const { isLoaded, isSignedIn, user } = useUser();
 	const session = user ? (window as unknown as {
-		Clerk?: { session?: { getToken: (opts: { template: string }) => Promise<string | null> } };
+		Clerk?: { session?: { getToken: (opts?: { template?: string }) => Promise<string | null> } };
 	}).Clerk?.session ?? null : null;
 	const [clerkJwt, setClerkJwt] = useState<string | null>(null);
 
-	// Resolve a Supabase-shaped JWT from the active Clerk session. We
-	// re-run when the user changes so logout / token refresh are picked
-	// up. While a new token is being fetched, the previous one stays in
-	// state — a brief null state would force the StorageProvider to
-	// localStorage mode and could cause a needless reload flicker.
+	// Resolve a Supabase-shaped JWT from the active Clerk session. With
+	// the native Clerk→Supabase Third-Party Auth integration (post-April
+	// 2025), the default session token already carries the `sub` claim
+	// (Clerk user.id) and a `role: "authenticated"` claim that Supabase
+	// expects. We pass `template: SUPABASE_JWT_TEMPLATE` as a fallback
+	// for users still on the deprecated JWT template integration; if no
+	// template is configured, Clerk returns the default token, which
+	// also works with the native integration.
 	useEffect(() => {
 		let cancelled = false;
 		async function fetchToken() {

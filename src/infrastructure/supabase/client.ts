@@ -8,21 +8,32 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
  * a warning and returns `null`. Callers must handle the `null` case and fall
  * back to the localStorage repository.
  *
- * Auth strategy: we use the Supabase anon key for the initial client, then
- * `applyClerkSession` re-authenticates the client with the Clerk session JWT
- * (mapped to Supabase's `auth.uid()` via a Clerk JWT template — see
- * `supabase/schema.sql` for the recommended RLS setup).
+ * Auth strategy (Clerk → Supabase native Third-Party Auth, post-April 2025):
+ *   1. Supabase is configured as a Third-Party Auth provider in
+ *      Authentication > Sign In / Providers > Clerk, with the Clerk domain.
+ *   2. The Supabase client is created with the anon key PLUS an
+ *      `accessToken` callback that returns the current Clerk session JWT.
+ *   3. On every request, the Supabase JS SDK injects
+ *      `Authorization: Bearer <clerk_jwt>` and Supabase validates the JWT
+ *      using the Third-Party Auth integration. The `sub` claim
+ *      (Clerk's user.id, e.g. "user_3EWGG9rtW9fiLwfl0KI9XkSOldk") is
+ *      available in Postgres as `auth.jwt()->>'sub'`, so our RLS
+ *      policies `(auth.jwt()->>'sub') = user_id` work correctly.
  *
- * The Clerk user.id is mirrored as `user_id` in our tables by every
- * Supabase*Repository so RLS policies like
- * `USING (user_id = auth.uid())` keep working.
+ * The Clerk user.id is mirrored as `user_id` (text) in our tables by every
+ * Supabase*Repository. See `supabase/schema.sql` for the policy setup.
+ *
+ * References:
+ *   - https://clerk.com/docs/guides/development/integrations/databases/supabase
+ *   - https://supabase.com/docs/guides/auth/third-party/clerk
  */
 let cachedClient: SupabaseClient | null = null;
 let cachedConfig: { url: string; anonKey: string } | null = null;
+let cachedTokenProvider: () => Promise<string | null> = async () => null;
 
 // Build version: forces a new bundle hash so CDN caches don't serve stale assets.
 // Bump this when env-driven configuration changes.
-export const SUPABASE_BUILD_VERSION = '2026-06-01-force-cdn-refresh-v2';
+export const SUPABASE_BUILD_VERSION = '2026-06-01-native-third-party-auth-v4';
 
 /**
  * Read Supabase env vars. Returns `null` when either is missing or empty.
@@ -47,6 +58,12 @@ function readConfig(): { url: string; anonKey: string } | null {
 /**
  * Returns the singleton Supabase client, or `null` if Supabase is not
  * configured. The caller is responsible for the fallback.
+ *
+ * The client uses the `accessToken` callback pattern (Clerk Third-Party Auth).
+ * The token provider is updated by `applyClerkSession` whenever the Clerk
+ * session changes; if no provider has been registered yet, the callback
+ * returns `null` and the client is effectively anonymous (RLS will reject
+ * reads/writes).
  */
 export function getSupabaseClient(): SupabaseClient | null {
 	if (cachedClient) return cachedClient;
@@ -56,10 +73,10 @@ export function getSupabaseClient(): SupabaseClient | null {
 		return null;
 	}
 	cachedClient = createClient(config.url, config.anonKey, {
+		accessToken: async () => cachedTokenProvider(),
 		auth: {
-			// We manage auth externally (Clerk → Supabase via JWT template).
-			// Disable Supabase's built-in session persistence to avoid
-			// clobbering the Clerk-issued session token.
+			// We manage auth externally (Clerk). Disable Supabase's built-in
+			// session persistence to avoid clobbering the Clerk session.
 			persistSession: false,
 			autoRefreshToken: false,
 			detectSessionInUrl: false,
@@ -72,33 +89,28 @@ export function getSupabaseClient(): SupabaseClient | null {
 }
 
 /**
- * Re-authenticate the Supabase client with a Clerk-issued JWT.
+ * Register (or clear) the Clerk session token used by the Supabase client.
  *
- * Pass the Clerk session token (template: "supabase") so that RLS policies
- * using `auth.uid()` resolve to the Clerk user.id. Calling this with `null`
- * clears the Supabase session and the next request will be anonymous
+ * Pass the Clerk session token (no template needed — the native Supabase
+ * integration accepts the default session token) so that RLS policies
+ * using `auth.jwt()->>'sub'` resolve to the Clerk user.id. Calling this
+ * with `null` clears the token and the next request will be anonymous
  * (RLS will reject reads/writes).
+ *
+ * Note: the function is synchronous because the `accessToken` callback
+ * is called on demand by the Supabase SDK; we just register a function
+ * that returns the latest known token. The token is fetched fresh on
+ * each request inside the callback closure.
  */
-export async function applyClerkSession(
-	client: SupabaseClient,
+export function applyClerkSession(
+	_client: SupabaseClient,
 	clerkJwt: string | null
-): Promise<void> {
-	if (clerkJwt) {
-		// Supabase JS expects a session object with `access_token` (the JWT)
-		// and `refresh_token` (we use a placeholder because we never refresh
-		// — Clerk handles the underlying Clerk session refresh).
-		// The `expires_at` is informational; the actual expiration is
-		// enforced by Supabase on the server.
-		const { error } = await client.auth.setSession({
-			access_token: clerkJwt,
-			refresh_token: 'clerk-managed',
-		});
-		if (error) {
-			console.error('[supabase] failed to apply Clerk session:', error);
-		}
-	} else {
-		await client.auth.signOut();
-	}
+): void {
+	// We do NOT call setSession here. The official Clerk + Supabase
+	// integration (post-April 2025) uses the `accessToken` callback
+	// that we registered in getSupabaseClient(), which injects the
+	// Clerk session JWT on every request. We just update the closure.
+	cachedTokenProvider = async () => clerkJwt;
 }
 
 /**
@@ -107,4 +119,5 @@ export async function applyClerkSession(
 export function __resetSupabaseClientForTesting(): void {
 	cachedClient = null;
 	cachedConfig = null;
+	cachedTokenProvider = async () => null;
 }

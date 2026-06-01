@@ -40,7 +40,7 @@ interface MigrationDialogProps {
  * session is active.
  */
 export default function MigrationDialog({ onMigrated, onDeclined, onError }: MigrationDialogProps) {
-	const { isLoaded, isSignedIn, userId, isSupabaseConfigured, isClerkConfigured } = useAuth();
+	const { isLoaded, isSignedIn, userId, clerkJwt, isSupabaseConfigured, isClerkConfigured } = useAuth();
 	const [state, setState] = useState<MigrationState | null>(null);
 	const [progress, setProgress] = useState<MigrationProgress | null>(null);
 	const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -76,7 +76,7 @@ export default function MigrationDialog({ onMigrated, onDeclined, onError }: Mig
 		setProgress(null);
 		const svc = createMigrationService();
 		try {
-			await svc.migrateAll(userId, (p) => setProgress(p));
+			await svc.migrateAll(userId, clerkJwt, (p) => setProgress(p));
 			setRunning(false);
 			setProgress({ phase: 'done', processed: 0, total: 0, message: 'Migración completada' });
 			onMigrated?.();
