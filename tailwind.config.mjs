@@ -80,10 +80,11 @@ export default {
 				sans: ['Inter', 'system-ui', 'sans-serif'],
 				display: ['Inter', 'system-ui', 'sans-serif'],
 			},
-			boxShadow: {
-				'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 8px 10px -4px rgba(0, 0, 0, 0.04)',
-				'card': '0 0 0 1px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1)',
-			},
+		boxShadow: {
+			'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 8px 10px -4px rgba(0, 0, 0, 0.04)',
+			'card': '0 0 0 1px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1)',
+			'glow': '0 4px 20px -2px rgba(14, 165, 233, 0.12), 0 0 0 1px rgba(14, 165, 233, 0.05)',
+		},
 			animation: {
 				'fade-in': 'fadeIn 0.3s ease-out',
 				'slide-up': 'slideUp 0.3s ease-out',

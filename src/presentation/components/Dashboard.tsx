@@ -12,6 +12,7 @@ import AuthControls from './AuthControls';
 import MigrationDialog from './MigrationDialog';
 import ClerkProviderWrapper from '../../infrastructure/auth/ClerkProviderWrapper';
 import { useFinancialMetrics } from '../../application/hooks/useFinancialMetrics';
+import { useMonthlyTrend } from '../../application/hooks/useFinancialMetrics';
 import { useCategories } from '../../application/hooks/useCategories';
 import { useTransactions } from '../../application/hooks/useTransactions';
 import { useAuth } from '../../application/hooks/useAuth';
@@ -70,6 +71,9 @@ function DashboardContent() {
 
 	// New complex features
 	const metrics = useFinancialMetrics(transactions.value, totals.value.balance);
+	const balanceTrend = useMonthlyTrend(transactions.value, 'balance');
+	const incomeTrend = useMonthlyTrend(transactions.value, 'income');
+	const expenseTrend = useMonthlyTrend(transactions.value, 'expense');
 
 	/**
 	 * Phase 2 projections (per spec `projections.spec`):
@@ -282,16 +286,28 @@ function DashboardContent() {
 					title="Balance Total"
 					value={formatCurrency(totals.value.balance)}
 					type="balance"
+					sparklineData={balanceTrend.series}
+					changePct={balanceTrend.changePct}
+					direction={balanceTrend.direction}
+					icon="wallet"
 				/>
 				<MetricCard
 					title="Ingresos del Mes"
 					value={formatCurrency(totals.value.income)}
 					type="income"
+					sparklineData={incomeTrend.series}
+					changePct={incomeTrend.changePct}
+					direction={incomeTrend.direction}
+					icon="trending-up"
 				/>
 				<MetricCard
 					title="Gastos del Mes"
 					value={formatCurrency(totals.value.expense)}
 					type="expense"
+					sparklineData={expenseTrend.series}
+					changePct={expenseTrend.changePct}
+					direction={expenseTrend.direction}
+					icon="trending-down"
 				/>
 			</div>
 
