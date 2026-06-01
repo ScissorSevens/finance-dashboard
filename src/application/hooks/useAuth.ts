@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { useUser } from '@clerk/clerk-react';
 import type { AuthContext } from '../../infrastructure/repositories/StorageProvider';
-import { getClerkPublishableKey, SUPABASE_JWT_TEMPLATE } from '../../infrastructure/auth/ClerkProviderWrapper';
+import { getClerkPublishableKey } from '../../infrastructure/auth/ClerkProviderWrapper';
 
 /**
  * Reactive auth state for the rest of the app.
@@ -17,8 +17,10 @@ import { getClerkPublishableKey, SUPABASE_JWT_TEMPLATE } from '../../infrastruct
  * - When no real Clerk key is configured, `getClerkPublishableKey()`
  *   returns `null` and the hook short-circuits to a logged-out stub
  *   without ever calling Clerk APIs.
- * - The JWT is fetched lazily via Clerk's `session.getToken({ template })`
- *   and re-fetched when the session changes.
+ * - The JWT is fetched lazily via Clerk's `session.getToken()` (the
+ *   default session token) and re-fetched when the session changes.
+ *   With the native Clerk→Supabase Third-Party Auth integration, the
+ *   default token already carries the claims Supabase needs.
  * - `isSupabaseConfigured` lets the UI show the right "sign in to sync"
  *   hint when only Clerk is configured.
  */
@@ -80,7 +82,7 @@ function isSupabaseConfigured(): boolean {
 function useClerkAuthInner(): UseAuthResult {
 	const { isLoaded, isSignedIn, user } = useUser();
 	const session = user ? (window as unknown as {
-		Clerk?: { session?: { getToken: (opts?: { template?: string }) => Promise<string | null> } };
+		Clerk?: { session?: { getToken: () => Promise<string | null> } };
 	}).Clerk?.session ?? null : null;
 	const [clerkJwt, setClerkJwt] = useState<string | null>(null);
 
@@ -90,16 +92,13 @@ function useClerkAuthInner(): UseAuthResult {
 	// (post-April 2025), the DEFAULT session token already carries:
 	//   - `sub`: Clerk user.id (e.g. "user_3EWGG9rtW9fiLwfl0KI9XkSOldk")
 	//   - `role: "authenticated"` (added by the Third-Party Auth config
-	//      in the Supabase dashboard — Authentication > Sign In/Providers)
-	// The deprecated JWT template integration expected a custom template
+	//      on the Clerk side — Integrations > Supabase)
+	// The deprecated JWT-template integration expected a custom template
 	// named "supabase" with manually-defined claims; the native integration
-	// removes that requirement.
-	//
-	// Strategy: try the template first (legacy compatibility), and if
-	// Clerk responds with 404 ("No JWT template exists with name: ..."),
-	// fall back to the default session token which always has `sub` and
-	// works with the native integration. This makes the code resilient
-	// to whichever Clerk+Supabase integration the user has set up.
+	// removes that requirement. We call `session.getToken()` with no args
+	// so Clerk never makes a request to the legacy
+	// `/v1/client/sessions/{sid}/tokens/supabase` endpoint (which 404s
+	// when no template is configured and pollutes the console with retries).
 	useEffect(() => {
 		let cancelled = false;
 		async function fetchToken() {
@@ -107,26 +106,13 @@ function useClerkAuthInner(): UseAuthResult {
 				setClerkJwt(null);
 				return;
 			}
-			// Try the custom template first (legacy JWT-template integration)
-			let token: string | null = null;
 			try {
-				token = await session.getToken({ template: SUPABASE_JWT_TEMPLATE });
+				const token = await session.getToken();
+				if (!cancelled) setClerkJwt(token);
 			} catch (e) {
-				// Expected when no template is configured. Fall through to default.
-				console.warn(
-					`[auth] JWT template "${SUPABASE_JWT_TEMPLATE}" not found; falling back to default session token. ` +
-						`This is correct for the native Clerk→Supabase Third-Party Auth integration.`
-				);
+				console.error('[auth] failed to fetch Clerk session token:', e);
+				if (!cancelled) setClerkJwt(null);
 			}
-			// Fallback: default session token (works with the native integration)
-			if (!token) {
-				try {
-					token = await session.getToken();
-				} catch (e) {
-					console.error('[auth] failed to fetch default Clerk session token:', e);
-				}
-			}
-			if (!cancelled) setClerkJwt(token);
 		}
 		void fetchToken();
 		return () => {
