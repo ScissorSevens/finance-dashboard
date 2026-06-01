@@ -11,7 +11,7 @@ export const SUPABASE_JWT_TEMPLATE = 'supabase';
 // Build version: ensures a new bundle hash is generated when env vars change.
 // This comment is intentionally kept so that the source file is never byte-identical
 // to a previous build, forcing Vite to emit a fresh hash and bust CDN caches.
-export const BUILD_VERSION = '2026-06-01-no-cache-meta-v3';
+export const BUILD_VERSION = '2026-06-01-fix-key-validation-v5';
 
 /**
  * Sentinel publishable key used when no real key is configured. The
@@ -34,11 +34,15 @@ export function getClerkPublishableKey(): string | null {
 	const key = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.trim();
 	if (!key) return null;
 	if (key === 'pk_test_REPLACE_ME' || key === 'pk_live_REPLACE_ME') return null;
-	// Clerk publishable keys are prefixed with `pk_` and end with `$`.
-	// Reject obviously bogus values to fail fast.
-	if (!key.startsWith('pk_') || !key.endsWith('$')) {
+	// Clerk publishable keys are prefixed with `pk_test_` or `pk_live_`
+	// followed by a base64-encoded frontend API URL. The base64 payload
+	// internally contains a `$` stop character (which decodes to a
+	// trailing `$` in the API hostname) but the key string itself does
+	// NOT end with `$` — that check would reject every valid Clerk key.
+	// See: https://clerk.com/blog/refactoring-our-api-keys
+	if (!key.startsWith('pk_test_') && !key.startsWith('pk_live_')) {
 		console.warn(
-			'[clerk] VITE_CLERK_PUBLISHABLE_KEY does not look like a Clerk key (expected pk_test_...$ or pk_live_...$). Auth will be disabled.'
+			'[clerk] VITE_CLERK_PUBLISHABLE_KEY does not look like a Clerk key (expected pk_test_... or pk_live_...). Auth will be disabled.'
 		);
 		return null;
 	}
