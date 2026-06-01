@@ -55,9 +55,14 @@ Add 3 features to the finance dashboard: custom categories, detailed expense pro
 **Database Schema**:
 ```sql
 -- transactions
+-- NOTE: user_id is TEXT (not UUID) because Clerk's user.id is a string
+-- like "user_3EWGG9rtW9fiLwfl0KI9XkSOldk". There is NO foreign key to
+-- auth.users(id) because Clerk manages auth.users externally; the row in
+-- auth.users for this Clerk user simply doesn't exist. RLS is enforced
+-- via auth.jwt()->>'sub' = user_id instead.
 CREATE TABLE transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  user_id TEXT NOT NULL,
   amount NUMERIC NOT NULL,
   type TEXT CHECK (type IN ('income', 'expense')) NOT NULL,
   category TEXT NOT NULL,
@@ -70,7 +75,7 @@ CREATE TABLE transactions (
 -- categories
 CREATE TABLE categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  user_id TEXT NOT NULL,
   name TEXT NOT NULL,
   type TEXT CHECK (type IN ('income', 'expense')) NOT NULL,
   color TEXT NOT NULL,

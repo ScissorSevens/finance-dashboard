@@ -1,28 +1,30 @@
 -- ============================================================================
--- Finance Dashboard — Schema FIX (v2: drops all existing policies first)
+-- Finance Dashboard — Schema FIX (v3: drops FK constraints first)
 -- ============================================================================
 -- Problem: The original schema declared `user_id` as `uuid`, but Clerk's
 -- user.id is a string like "user_3EWGG9rtW9fiLwfl0KI9XkSOldk" — NOT a UUID.
 -- Inserts from the app fail with:
 --   "invalid input syntax for type uuid: 'user_3EWGG9rtW9fiLwfl0KI9XkSOldk'"
 --
--- Postgres refuses to alter a column type while a policy depends on it:
---   "cannot alter type of a column used in a policy definition"
--- So we must drop ALL existing policies on these tables FIRST, then alter
--- the type, then create the new Clerk-aware policies.
+-- Postgres refuses to alter a column type while:
+--   - an RLS policy depends on it
+--     ("cannot alter type of a column used in a policy definition")
+--   - a foreign key depends on it
+--     ("foreign key constraint ... cannot be implemented")
 --
--- This script:
---   1. Drops every policy on public.transactions and public.categories.
---   2. Alters `user_id` from `uuid` to `text` in both tables.
---   3. Replaces the RLS policies with JWT-claim-based versions that work
---      with Clerk's string user IDs.
+-- For Clerk+Supabase we must:
+--   1. Drop ALL existing policies on these tables.
+--   2. Drop the FK from user_id → auth.users(id) (Clerk manages auth.users
+--      externally, so the FK to Supabase's internal user table doesn't make
+--      sense — and its uuid type blocks the alter).
+--   3. Alter `user_id` from `uuid` to `text` in both tables.
+--   4. Re-create the RLS policies with JWT-claim-based versions.
 --
 -- IMPORTANT: Run this in the Supabase SQL editor. Idempotent.
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
 -- 1. Drop ALL existing policies on transactions and categories
---    (Postgres blocks ALTER TYPE while any policy depends on the column)
 -- ---------------------------------------------------------------------------
 do $$
 declare
@@ -40,7 +42,36 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- 2. transactions.user_id : uuid → text
+-- 2. Drop ALL foreign keys on these tables that reference the user_id column
+--    (The proposal.md suggested `user_id UUID REFERENCES auth.users(id)`,
+--     but with Clerk managing auth, that FK must go — it blocks the type
+--     change and adds no value.)
+-- ---------------------------------------------------------------------------
+do $$
+declare
+	c record;
+begin
+	for c in
+		select conname, conrelid::regclass::text as tbl
+		  from pg_constraint
+		 where contype = 'f'
+		   and connamespace = 'public'::regnamespace
+		   and (
+		   	   conrelid = 'public.transactions'::regclass
+		   	or conrelid = 'public.categories'::regclass
+		   )
+		   and (
+		   	   pg_get_constraintdef(oid) like '%user_id%'
+		   	and pg_get_constraintdef(oid) like '%REFERENCES%'
+		   )
+	loop
+		execute format('alter table %s drop constraint %I', c.tbl, c.conname);
+		raise notice 'Dropped FK "%" on %', c.conname, c.tbl;
+	end loop;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 3. transactions.user_id : uuid → text
 -- ---------------------------------------------------------------------------
 do $$
 begin
@@ -60,7 +91,7 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- 3. categories.user_id : uuid → text
+-- 4. categories.user_id : uuid → text
 -- ---------------------------------------------------------------------------
 do $$
 begin
@@ -80,13 +111,13 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- 4. Re-enable RLS (idempotent)
+-- 5. Re-enable RLS (idempotent)
 -- ---------------------------------------------------------------------------
 alter table public.transactions enable row level security;
 alter table public.categories  enable row level security;
 
 -- ---------------------------------------------------------------------------
--- 5. Create Clerk-aware RLS policies (JWT sub claim)
+-- 6. Create Clerk-aware RLS policies (JWT sub claim)
 --    See: https://clerk.com/docs/guides/development/integrations/databases/supabase
 -- ---------------------------------------------------------------------------
 create policy "Users manage their own transactions"
