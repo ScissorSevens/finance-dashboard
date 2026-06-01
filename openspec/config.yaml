@@ -2,10 +2,11 @@ schema: spec-driven
 project: finance-dashboard
 
 context: |
-  Tech stack: Astro 5.x + TypeScript + Tailwind CSS 3.4
-  Architecture: Clean Architecture (domain, application, infrastructure, presentation)
-  Testing: No test runner detected yet (package.json without vitest/jest)
-  Style: Tailwind CSS for styling
+  Tech stack: Astro 5.x + TypeScript 5.9 (strict) + Preact 10.x + Tailwind CSS 3.4 + Chart.js 4.x
+  Architecture: Clean Architecture (domain, application, infrastructure, presentation) with path aliases
+  Testing: No test runner detected — strict TDD unavailable
+  Style: Tailwind CSS, singleton pattern for services/repos, Spanish UI (es-AR, ARS)
+  Deployment: GitHub Pages (ScissorSevens.github.io/finance-dashboard)
 
 strict_tdd: false
 
@@ -33,7 +34,7 @@ rules:
     - Warn before merging destructive deltas (large removals)
 
 testing:
-  runner: Not detected
+  runner: None
   strict_tdd: false
   layers:
     unit: false
@@ -42,5 +43,6 @@ testing:
   coverage: false
   quality:
     linter: Not configured
-    type_checker: Not configured
+    type_checker: "astro check (TypeScript strict)"
     formatter: Not configured
+  recommendation: Install vitest for unit/integration testing. Add eslint + prettier for code quality.

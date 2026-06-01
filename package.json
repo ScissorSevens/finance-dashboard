@@ -9,7 +9,9 @@
     "check": "astro check"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.61.8",
     "@preact/signals": "^1.2.2",
+    "@supabase/supabase-js": "^2.106.2",
     "astro": "^5.0.0",
     "chart.js": "^4.4.1",
     "preact": "^10.19.3",

@@ -4,5 +4,13 @@ import Dashboard from '../presentation/components/Dashboard';
 ---
 
 <MainLayout title="Finance Dashboard">
-  <Dashboard client:load />
+  <!--
+    `client:only="preact"` skips SSR entirely for this island. The
+    dashboard depends on browser-only globals (localStorage, Clerk
+    session, Supabase client) and Clerk's React Provider uses hooks
+    that don't survive preact-render-to-string. The trade-off is
+    that the dashboard has no SSR'd content, but it's a fully client
+    app anyway so there's nothing meaningful to SSR.
+  -->
+  <Dashboard client:only="preact" />
 </MainLayout>

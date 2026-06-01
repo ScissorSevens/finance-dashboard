@@ -189,6 +189,43 @@ export class LocalStorageTransactionRepository implements TransactionRepository 
 		const transactions = await this.getAll();
 		return transactions.filter((t) => t.type === type);
 	}
+
+	async createBulk(
+		transactions: Array<Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>>,
+		userId: string
+	): Promise<Transaction[]> {
+		// localStorage "bulk insert": just create each one in order. The
+		// `userId` parameter is ignored — localStorage is single-tenant by
+		// definition. The implementation is "atomic" in the sense that an
+		// exception on any row aborts the loop; the previous rows remain
+		// in storage, but localStorage is the fallback path so this is
+		// acceptable (the spec's atomic-rollback contract applies to the
+		// Supabase repository).
+		const now = new Date().toISOString();
+		const created: Transaction[] = [];
+		const existing = await this.getAll();
+		const next = [...existing];
+		for (const tx of transactions) {
+			const entity: Transaction = {
+				...tx,
+				id: uuidv4(),
+				createdAt: now,
+				updatedAt: now,
+			};
+			next.push(entity);
+			created.push(entity);
+		}
+		if (isStorageAvailable()) {
+			saveAllToStorage(next);
+		} else {
+			memoryStorage = next;
+		}
+		// Keep the unused `userId` parameter for interface symmetry; ts-ignore
+		// is not needed because TypeScript only complains about unused vars
+		// when `noUnusedParameters` is on, which it is not in this tsconfig.
+		void userId;
+		return created;
+	}
 }
 
 /**

@@ -1,26 +1,34 @@
-import { transactionRepository } from '../../infrastructure/repositories/LocalStorageTransactionRepository';
-import type { Transaction, TransactionType, TransactionCategory } from '../../domain/entities/Transaction';
+import type { TransactionRepository } from '../../domain/repositories/TransactionRepository';
+import { transactionRepository as defaultTransactionRepository } from '../../infrastructure/repositories/LocalStorageTransactionRepository';
+import type { Transaction, TransactionType } from '../../domain/entities/Transaction';
 
 /**
  * Service layer for transaction operations
- * Implements business logic and orchestrates repository calls
+ * Implements business logic and orchestrates repository calls.
+ *
+ * Phase 3 update: the service now accepts the repository via the
+ * constructor (dependency injection) so callers can swap in a
+ * Supabase-backed repository. The default export below uses the
+ * localStorage singleton to keep backward compatibility.
  */
 export class TransactionService {
+	constructor(private readonly repository: TransactionRepository = defaultTransactionRepository) {}
+
 	/**
 	 * Get all transactions, optionally filtered by type
 	 */
 	async getTransactions(type?: TransactionType): Promise<Transaction[]> {
 		if (type) {
-			return transactionRepository.getByType(type);
+			return this.repository.getByType(type);
 		}
-		return transactionRepository.getAll();
+		return this.repository.getAll();
 	}
 
 	/**
 	 * Get a single transaction by ID
 	 */
 	async getTransaction(id: string): Promise<Transaction | null> {
-		return transactionRepository.getById(id);
+		return this.repository.getById(id);
 	}
 
 	/**
@@ -29,7 +37,7 @@ export class TransactionService {
 	async createTransaction(data: {
 		amount: number;
 		type: TransactionType;
-		category: TransactionCategory;
+		category: string;
 		description: string;
 		date: string;
 	}): Promise<Transaction> {
@@ -48,7 +56,7 @@ export class TransactionService {
 			throw new Error('La descripción es requerida');
 		}
 
-		return transactionRepository.create({
+		return this.repository.create({
 			amount: data.amount,
 			type: data.type,
 			category: data.category,
@@ -65,7 +73,7 @@ export class TransactionService {
 		data: Partial<{
 			amount: number;
 			type: TransactionType;
-			category: TransactionCategory;
+			category: string;
 			description: string;
 			date: string;
 		}>
@@ -80,14 +88,14 @@ export class TransactionService {
 			throw new Error('Formato de fecha inválido');
 		}
 
-		return transactionRepository.update(id, data);
+		return this.repository.update(id, data);
 	}
 
 	/**
 	 * Delete a transaction
 	 */
 	async deleteTransaction(id: string): Promise<boolean> {
-		return transactionRepository.delete(id);
+		return this.repository.delete(id);
 	}
 
 	/**
@@ -98,11 +106,23 @@ export class TransactionService {
 		const lastDay = new Date(year, month, 0).getDate();
 		const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
 
-		return transactionRepository.getByDateRange(startDate, endDate);
+		return this.repository.getByDateRange(startDate, endDate);
+	}
+
+	/**
+	 * Bulk insert a batch of transactions. Used by the migration path.
+	 */
+	async createBulkTransactions(
+		transactions: Array<Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>>,
+		userId: string
+	): Promise<Transaction[]> {
+		return this.repository.createBulk(transactions, userId);
 	}
 }
 
 /**
- * Singleton instance of the service
+ * Default singleton instance of the service, wired to the localStorage
+ * repository. Use `new TransactionService(supabaseRepo)` from hooks that
+ * have a StorageProvider to swap implementations at runtime.
  */
 export const transactionService = new TransactionService();

@@ -1,7 +1,10 @@
 import { signal, computed } from '@preact/signals';
 import { useEffect } from 'preact/hooks';
-import type { Transaction, TransactionType, TransactionCategory } from '../../domain/entities/Transaction';
-import { transactionService } from '../services/TransactionService';
+import type { Transaction, TransactionType } from '../../domain/entities/Transaction';
+import { TransactionService } from '../services/TransactionService';
+import { useAuth } from './useAuth';
+import { createStorageProvider } from '../../infrastructure/repositories/StorageProvider';
+import type { TransactionRepository } from '../../domain/repositories/TransactionRepository';
 
 /**
  * Signal state for transactions
@@ -10,7 +13,7 @@ const transactions = signal<Transaction[]>([]);
 const isLoading = signal(false);
 const error = signal<string | null>(null);
 const filterType = signal<TransactionType | 'all'>('all');
-const filterCategory = signal<TransactionCategory | 'all'>('all');
+const filterCategory = signal<string | 'all'>('all');
 const searchQuery = signal('');
 
 /**
@@ -56,18 +59,41 @@ const totals = computed(() => {
 });
 
 /**
- * Hook for managing transactions with Preact Signals
+ * Hook for managing transactions with Preact Signals.
+ *
+ * Phase 3 update: this hook no longer depends on a hard-coded
+ * `transactionRepository` singleton. It reads the current Clerk auth
+ * state via `useAuth()`, asks the `StorageProvider` for the right
+ * repository, and creates a per-call `TransactionService` wrapping it.
+ *
+ * Spec scenarios covered:
+ * - Authenticated user → Supabase repo → RLS isolates data
+ * - Offline / unauthenticated / Supabase down → localStorage repo
+ * - Switching accounts → next load picks the new user_id automatically
  */
 export function useTransactions() {
+	const { userId, clerkJwt, isLoaded, isSignedIn } = useAuth();
+
 	/**
-	 * Load all transactions from storage
+	 * Build a TransactionService wrapping a repo chosen by the
+	 * StorageProvider based on the current auth context.
+	 */
+	const buildService = (): TransactionService => {
+		const provider = createStorageProvider();
+		const repo: TransactionRepository = provider.getTransactionRepository({ userId, clerkJwt });
+		return new TransactionService(repo);
+	};
+
+	/**
+	 * Load all transactions from the active backend.
 	 */
 	const loadTransactions = async () => {
 		isLoading.value = true;
 		error.value = null;
 
 		try {
-			const data = await transactionService.getTransactions();
+			const service = buildService();
+			const data = await service.getTransactions();
 			transactions.value = data;
 		} catch (e) {
 			error.value = e instanceof Error ? e.message : 'Error al cargar transacciones';
@@ -83,7 +109,7 @@ export function useTransactions() {
 	const addTransaction = async (data: {
 		amount: number;
 		type: TransactionType;
-		category: TransactionCategory;
+		category: string;
 		description: string;
 		date: string;
 	}) => {
@@ -91,7 +117,8 @@ export function useTransactions() {
 		error.value = null;
 
 		try {
-			const newTransaction = await transactionService.createTransaction(data);
+			const service = buildService();
+			const newTransaction = await service.createTransaction(data);
 			transactions.value = [...transactions.value, newTransaction];
 			return newTransaction;
 		} catch (e) {
@@ -110,7 +137,7 @@ export function useTransactions() {
 		data: Partial<{
 			amount: number;
 			type: TransactionType;
-			category: TransactionCategory;
+			category: string;
 			description: string;
 			date: string;
 		}>
@@ -119,7 +146,8 @@ export function useTransactions() {
 		error.value = null;
 
 		try {
-			const updated = await transactionService.updateTransaction(id, data);
+			const service = buildService();
+			const updated = await service.updateTransaction(id, data);
 			if (updated) {
 				transactions.value = transactions.value.map((t) => (t.id === id ? updated : t));
 			}
@@ -140,12 +168,13 @@ export function useTransactions() {
 		error.value = null;
 
 		try {
-			const success = await transactionService.deleteTransaction(id);
+			const service = buildService();
+			const success = await service.deleteTransaction(id);
 			if (success) {
 				transactions.value = transactions.value.filter((t) => t.id !== id);
 			}
 			return success;
-		} catch (e) {
+		} catch (e)			{
 			error.value = e instanceof Error ? e.message : 'Error al eliminar transacción';
 			throw e;
 		} finally {
@@ -163,7 +192,7 @@ export function useTransactions() {
 	/**
 	 * Set category filter
 	 */
-	const setFilterCategory = (category: TransactionCategory | 'all') => {
+	const setFilterCategory = (category: string | 'all') => {
 		filterCategory.value = category;
 	};
 
@@ -183,10 +212,17 @@ export function useTransactions() {
 		searchQuery.value = '';
 	};
 
-	// Load transactions on mount
+	// Load transactions when auth state is resolved. We depend on the
+	// `userId` (not `isSignedIn` alone) so that switching Clerk accounts
+	// triggers a reload. We also depend on `clerkJwt` so a token refresh
+	// picks up the new token.
 	useEffect(() => {
-		loadTransactions();
-	}, []);
+		if (!isLoaded) return;
+		void loadTransactions();
+		// We intentionally do NOT include `loadTransactions` in deps — it's
+		// a stable closure that reads the latest auth via `useAuth()`.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [isLoaded, userId, clerkJwt, isSignedIn]);
 
 	return {
 		// State
@@ -208,5 +244,9 @@ export function useTransactions() {
 		setFilterCategory,
 		setSearchQuery,
 		clearFilters,
+
+		// Derived
+		isAuthResolved: isLoaded,
+		isAuthenticated: isSignedIn,
 	};
 }

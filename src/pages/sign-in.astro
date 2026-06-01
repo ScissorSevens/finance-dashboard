@@ -1,0 +1,16 @@
+---
+import MainLayout from '../presentation/layouts/MainLayout.astro';
+import SignInIsland from '../presentation/components/SignInIsland';
+---
+
+<MainLayout title="Iniciar sesión · Finance Dashboard">
+	<!--
+		`client:only="preact"` skips SSR entirely for this island. Clerk's
+		SignIn component requires the browser (it reads the publishable
+		key + bootstraps the Clerk SDK client-side) and Clerk's React
+		hooks don't survive preact-render-to-string. Mounting it as a
+		client-only island keeps the same SSR-safe surface as the
+		dashboard root.
+	-->
+	<SignInIsland client:only="preact" />
+</MainLayout>
