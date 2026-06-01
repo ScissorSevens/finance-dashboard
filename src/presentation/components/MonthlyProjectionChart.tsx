@@ -70,10 +70,13 @@ export default function MonthlyProjectionChart({
             pointBorderColor: '#fff',
             pointBorderWidth: 1,
             fill: false,
-            borderDash: (ctx) => (isProjectedAt(data, ctx.dataIndex) ? [6, 4] : undefined),
+            // Return [] (solid line) instead of undefined for non-projected
+            // points. Chart.js calls ctx.setLineDash(returnValue) internally;
+            // setLineDash(undefined) throws a TypeError.
+            borderDash: (ctx) => (isProjectedAt(data, ctx.dataIndex) ? [6, 4] : []),
             segment: {
               borderDash: (ctx) =>
-                isProjectedAt(data, ctx.p1DataIndex) ? [6, 4] : undefined,
+                isProjectedAt(data, ctx.p1DataIndex) ? [6, 4] : [],
             },
           },
           {
@@ -88,10 +91,10 @@ export default function MonthlyProjectionChart({
             pointBorderColor: '#fff',
             pointBorderWidth: 1,
             fill: false,
-            borderDash: (ctx) => (isProjectedAt(data, ctx.dataIndex) ? [6, 4] : undefined),
+            borderDash: (ctx) => (isProjectedAt(data, ctx.dataIndex) ? [6, 4] : []),
             segment: {
               borderDash: (ctx) =>
-                isProjectedAt(data, ctx.p1DataIndex) ? [6, 4] : undefined,
+                isProjectedAt(data, ctx.p1DataIndex) ? [6, 4] : [],
             },
           },
           {
@@ -106,10 +109,10 @@ export default function MonthlyProjectionChart({
             pointBorderColor: '#fff',
             pointBorderWidth: 1,
             fill: false,
-            borderDash: (ctx) => (isProjectedAt(data, ctx.dataIndex) ? [6, 4] : undefined),
+            borderDash: (ctx) => (isProjectedAt(data, ctx.dataIndex) ? [6, 4] : []),
             segment: {
               borderDash: (ctx) =>
-                isProjectedAt(data, ctx.p1DataIndex) ? [6, 4] : undefined,
+                isProjectedAt(data, ctx.p1DataIndex) ? [6, 4] : [],
             },
           },
         ],

@@ -1,6 +1,7 @@
 import { signal, computed } from '@preact/signals';
 import { useEffect } from 'preact/hooks';
 import type { Category, CategoryInput, CategoryType } from '../../domain/entities/Category';
+import { DEFAULT_CATEGORIES } from '../../domain/entities/Category';
 import {
 	CategoryService,
 	DefaultCategoryProtectedError,
@@ -8,6 +9,7 @@ import {
 } from '../services/CategoryService';
 import { useAuth } from './useAuth';
 import { createStorageProvider } from '../../infrastructure/repositories/StorageProvider';
+import { getSupabaseClient } from '../../infrastructure/supabase/client';
 import type { CategoryRepository } from '../../domain/repositories/CategoryRepository';
 
 /**
@@ -63,7 +65,32 @@ export function useCategories() {
 		error.value = null;
 		try {
 			const service = buildService();
-			const data = await service.getAll();
+			let data = await service.getAll();
+
+			// Seed default categories for new users on the Supabase backend.
+			//
+			// LocalStorageCategoryRepository.findAll() seeds defaults automatically
+			// when the storage key is missing. SupabaseCategoryRepository does not
+			// — a new user who signs in for the first time gets an empty list.
+			//
+			// We detect this case here: if the result is empty AND the user is
+			// authenticated AND the Supabase client is available (meaning we just
+			// queried Supabase, not localStorage), we bulk-insert the canonical
+			// defaults. This runs exactly once per new user (next load returns
+			// the seeded rows).
+			if (data.length === 0 && isSignedIn && userId && getSupabaseClient()) {
+				const provider = createStorageProvider();
+				const repo: CategoryRepository = provider.getCategoryRepository({ userId, clerkJwt });
+				try {
+					data = await repo.createBulk(DEFAULT_CATEGORIES, userId);
+				} catch (seedErr) {
+					// Seeding failed (e.g. duplicate insert on concurrent load).
+					// Not fatal — re-try next load or let the user create categories manually.
+					console.warn('[categories] default seeding failed (non-fatal):', seedErr);
+					data = [];
+				}
+			}
+
 			categories.value = data;
 		} catch (e) {
 			error.value = e instanceof Error ? e.message : 'Error al cargar categorías';
@@ -149,9 +176,13 @@ export function useCategories() {
 	// clerkJwt so account switching triggers a reload.
 	useEffect(() => {
 		if (!isLoaded) return;
-		// Wipe the in-memory list whenever the identity changes. Otherwise
-		// a freshly signed-in user could see a flash of the previous
-		// user's categories while the next loadCategories() is in flight.
+		// Guard: if the user is signed in but the JWT hasn't arrived yet,
+		// skip this render. The effect will re-fire when clerkJwt becomes
+		// non-null. Without this guard the first render fires a Supabase
+		// request with a null Authorization header; Supabase (Third-Party
+		// Auth) rejects it with an error (not an empty array), which sets
+		// error.value and shows the pink error banner in CategoryManager.
+		if (isSignedIn && !clerkJwt) return;
 		categories.value = [];
 		void loadCategories();
 		// eslint-disable-next-line react-hooks/exhaustive-deps

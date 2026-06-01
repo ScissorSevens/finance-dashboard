@@ -218,9 +218,9 @@ export function useTransactions() {
 	// picks up the new token.
 	useEffect(() => {
 		if (!isLoaded) return;
-		// Wipe the in-memory list whenever the identity changes. Same
-		// reason as in useCategories: avoid a flash of the previous
-		// user's transactions while the next load is in flight.
+		// Guard: if signed in but JWT not ready yet, skip — same reason as
+		// in useCategories: avoids a premature Supabase request with null auth.
+		if (isSignedIn && !clerkJwt) return;
 		transactions.value = [];
 		void loadTransactions();
 		// We intentionally do NOT include `loadTransactions` in deps — it's
