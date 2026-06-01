@@ -11,7 +11,7 @@ export const SUPABASE_JWT_TEMPLATE = 'supabase';
 // Build version: ensures a new bundle hash is generated when env vars change.
 // This comment is intentionally kept so that the source file is never byte-identical
 // to a previous build, forcing Vite to emit a fresh hash and bust CDN caches.
-export const BUILD_VERSION = '2026-06-01-fix-migration-jwt-v6';
+export const BUILD_VERSION = '2026-06-01-jwt-template-fallback-v7';
 
 /**
  * Sentinel publishable key used when no real key is configured. The

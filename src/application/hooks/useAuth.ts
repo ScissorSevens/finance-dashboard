@@ -84,14 +84,22 @@ function useClerkAuthInner(): UseAuthResult {
 	}).Clerk?.session ?? null : null;
 	const [clerkJwt, setClerkJwt] = useState<string | null>(null);
 
-	// Resolve a Supabase-shaped JWT from the active Clerk session. With
-	// the native Clerk→Supabase Third-Party Auth integration (post-April
-	// 2025), the default session token already carries the `sub` claim
-	// (Clerk user.id) and a `role: "authenticated"` claim that Supabase
-	// expects. We pass `template: SUPABASE_JWT_TEMPLATE` as a fallback
-	// for users still on the deprecated JWT template integration; if no
-	// template is configured, Clerk returns the default token, which
-	// also works with the native integration.
+	// Resolve a Supabase-shaped JWT from the active Clerk session.
+	//
+	// With the native Clerk→Supabase Third-Party Auth integration
+	// (post-April 2025), the DEFAULT session token already carries:
+	//   - `sub`: Clerk user.id (e.g. "user_3EWGG9rtW9fiLwfl0KI9XkSOldk")
+	//   - `role: "authenticated"` (added by the Third-Party Auth config
+	//      in the Supabase dashboard — Authentication > Sign In/Providers)
+	// The deprecated JWT template integration expected a custom template
+	// named "supabase" with manually-defined claims; the native integration
+	// removes that requirement.
+	//
+	// Strategy: try the template first (legacy compatibility), and if
+	// Clerk responds with 404 ("No JWT template exists with name: ..."),
+	// fall back to the default session token which always has `sub` and
+	// works with the native integration. This makes the code resilient
+	// to whichever Clerk+Supabase integration the user has set up.
 	useEffect(() => {
 		let cancelled = false;
 		async function fetchToken() {
@@ -99,13 +107,26 @@ function useClerkAuthInner(): UseAuthResult {
 				setClerkJwt(null);
 				return;
 			}
+			// Try the custom template first (legacy JWT-template integration)
+			let token: string | null = null;
 			try {
-				const token = await session.getToken({ template: SUPABASE_JWT_TEMPLATE });
-				if (!cancelled) setClerkJwt(token);
+				token = await session.getToken({ template: SUPABASE_JWT_TEMPLATE });
 			} catch (e) {
-				console.error('[auth] failed to fetch Clerk Supabase JWT:', e);
-				if (!cancelled) setClerkJwt(null);
+				// Expected when no template is configured. Fall through to default.
+				console.warn(
+					`[auth] JWT template "${SUPABASE_JWT_TEMPLATE}" not found; falling back to default session token. ` +
+						`This is correct for the native Clerk→Supabase Third-Party Auth integration.`
+				);
 			}
+			// Fallback: default session token (works with the native integration)
+			if (!token) {
+				try {
+					token = await session.getToken();
+				} catch (e) {
+					console.error('[auth] failed to fetch default Clerk session token:', e);
+				}
+			}
+			if (!cancelled) setClerkJwt(token);
 		}
 		void fetchToken();
 		return () => {
