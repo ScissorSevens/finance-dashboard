@@ -41,6 +41,14 @@ jobs:
         run: npm run check
 
       - name: Build
+        env:
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+          VITE_CLERK_SIGN_IN_URL: ${{ secrets.VITE_CLERK_SIGN_IN_URL }}
+          VITE_CLERK_SIGN_UP_URL: ${{ secrets.VITE_CLERK_SIGN_UP_URL }}
+          VITE_CLERK_AFTER_SIGN_IN_URL: ${{ secrets.VITE_CLERK_AFTER_SIGN_IN_URL }}
+          VITE_CLERK_AFTER_SIGN_UP_URL: ${{ secrets.VITE_CLERK_AFTER_SIGN_UP_URL }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: npm run build
 
       - name: Upload Pages Artifact
