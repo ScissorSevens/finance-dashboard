@@ -11,7 +11,7 @@ export const SUPABASE_JWT_TEMPLATE = 'supabase';
 // Build version: ensures a new bundle hash is generated when env vars change.
 // This comment is intentionally kept so that the source file is never byte-identical
 // to a previous build, forcing Vite to emit a fresh hash and bust CDN caches.
-const BUILD_VERSION = '2026-06-01-force-cdn-refresh';
+export const BUILD_VERSION = '2026-06-01-no-cache-meta-v3';
 
 /**
  * Sentinel publishable key used when no real key is configured. The
@@ -84,6 +84,8 @@ export default function ClerkProviderWrapper({
 	afterSignInUrl,
 	afterSignUpUrl,
 }: ClerkProviderWrapperProps) {
+	// Reference BUILD_VERSION so Vite doesn't tree-shake it.
+	void BUILD_VERSION;
 	const publishableKey = getClerkPublishableKey() ?? PLACEHOLDER_PUBLISHABLE_KEY;
 	return (
 		<ClerkProvider

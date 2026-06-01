@@ -22,8 +22,7 @@ let cachedConfig: { url: string; anonKey: string } | null = null;
 
 // Build version: forces a new bundle hash so CDN caches don't serve stale assets.
 // Bump this when env-driven configuration changes.
-const BUILD_VERSION = '2026-06-01-force-cdn-refresh';
-void BUILD_VERSION;
+export const SUPABASE_BUILD_VERSION = '2026-06-01-force-cdn-refresh-v2';
 
 /**
  * Read Supabase env vars. Returns `null` when either is missing or empty.
@@ -51,6 +50,7 @@ function readConfig(): { url: string; anonKey: string } | null {
  */
 export function getSupabaseClient(): SupabaseClient | null {
 	if (cachedClient) return cachedClient;
+	void SUPABASE_BUILD_VERSION; // force inclusion
 	const config = readConfig();
 	if (!config) {
 		return null;

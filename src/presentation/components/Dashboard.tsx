@@ -42,6 +42,11 @@ import type { Transaction } from '../../domain/entities/Transaction';
  * scenarios and useAuth for the auth UI ones.
  */
 export default function Dashboard() {
+	// Reference DASHBOARD_BUILD_SENTINEL to prevent Vite from tree-shaking it.
+	// The string itself is the cache-bust marker — change it to force a new bundle hash.
+	if (typeof window !== 'undefined' && (window as unknown as { __DASHBOARD_BUILD__?: string }).__DASHBOARD_BUILD__ !== DASHBOARD_BUILD_SENTINEL) {
+		(window as unknown as { __DASHBOARD_BUILD__?: string }).__DASHBOARD_BUILD__ = DASHBOARD_BUILD_SENTINEL;
+	}
 	return (
 		<ClerkProviderWrapper>
 			<DashboardContent />
@@ -381,3 +386,7 @@ function DashboardContent() {
 // (some other components may have imported it as a side effect of the
 // previous Dashboard mock — keeping it here avoids breaking those).
 export { runMigration };
+
+// Build sentinel: changing this string forces Vite to emit a new chunk hash
+// so GitHub Pages CDN serves the fresh bundle (this version: 2026-06-01-no-cache-meta-v4).
+export const DASHBOARD_BUILD_SENTINEL = '2026-06-01-no-cache-meta-v4';

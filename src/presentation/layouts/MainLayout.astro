@@ -12,6 +12,10 @@ const { title } = Astro.props;
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Finance Dashboard - Controla tus finanzas personales" />
+    <!-- Anti-cache: force browser to revalidate on every load so deploys are picked up immediately. -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>{title}</title>
     <script is:inline>
       // Check for saved theme preference or system preference
