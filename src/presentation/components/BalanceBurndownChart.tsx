@@ -109,7 +109,7 @@ export default function BalanceBurndownChart({ dates, balances }: BalanceBurndow
   }
 
   return (
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+    <div class="card-modern">
       <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Evolución del Balance</h3>
       <div class="h-64">
         <canvas ref={canvasRef}></canvas>

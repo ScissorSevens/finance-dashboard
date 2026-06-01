@@ -31,16 +31,19 @@
 **Scenario**: Any user opens the dashboard.
 - **WHEN** a KPI card renders
 - **THEN** the value is rendered in `text-3xl font-bold tracking-tight` (up from `text-2xl font-bold`)
-- **AND** the title is rendered in `text-sm font-medium uppercase tracking-wide text-surface-500 dark:text-surface-400`
-- **AND** the trend label is `text-xs font-medium`
+- **AND** the title is rendered as an uppercase eyebrow label (`text-xs font-semibold uppercase tracking-wider text-surface-500 dark:text-surface-400`) for a modern, refined look
+- **AND** the trend label is `text-xs font-semibold`
 
-### REQ-5: All chart cards use the modern card surface
+### REQ-5: Neutral chart cards use the modern card surface
 **Scenario**: Any user opens the dashboard.
-- **WHEN** any of these components render: `CategoryChart`, `ExpenseChart`, `BalanceBurndownChart`, `ProjectionCard`, `MonthlyComparison`
+- **WHEN** any of these components render: `CategoryChart`, `ExpenseChart`, `BalanceBurndownChart`
 - **THEN** they use the new `.card-modern` CSS class
 - **AND** the surface has `rounded-2xl`, `shadow-soft`, subtle `border border-surface-200/60 dark:border-surface-700/60`
 - **AND** on hover, the card lifts by 2px (`-translate-y-0.5`) and gains a `shadow-glow` (subtle primary-tinted)
 - **AND** the transition is `duration-200 ease-out`
+
+**Excluded from this requirement** (intentional, see Decision Log):
+- `ProjectionCard` and `MonthlyComparison` keep their color-tinted backgrounds (`bg-red-50`/`bg-green-50`/`bg-blue-50` etc.) because those tints ARE a status indicator — red warns about high projected expenses, green signals a healthy trend, etc. Migrating them to neutral would lose at-a-glance status information that the user depends on. Future work could extract the status color into a small "status pill" inside the card while keeping the card surface neutral.
 
 ### REQ-6: Card-modern hover respects reduced-motion preference
 **Scenario**: A user with `prefers-reduced-motion: reduce` enabled in their OS opens the dashboard.

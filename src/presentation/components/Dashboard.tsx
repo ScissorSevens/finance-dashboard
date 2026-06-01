@@ -239,7 +239,7 @@ function DashboardContent() {
 	}
 
 	return (
-		<div class="space-y-8">
+		<div class="space-y-10">
 			{/* Top bar: auth controls + storage mode hint */}
 			<div class="flex items-center justify-between gap-3 flex-wrap">
 				<div class="flex items-center gap-3">
